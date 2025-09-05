@@ -4,6 +4,8 @@ import useWebRTC from "./useWebRTC";
 const useWebsocket = (url) => {
     const {
         data,
+        isConnected,
+        receivingProgress,
         createOffer,
         createAnswer,
         finalizeConnection,
@@ -60,17 +62,17 @@ const useWebsocket = (url) => {
         }
     }
 
-    const initialize = async (remoteClient) => {
+    const initialize = async (remoteCode) => {
         const offerStr= await createOffer();
         console.log("Offer created and Requested to the Peer.");
-        sendMessage('offer',remoteClient?.current, offerStr);
+        sendMessage('offer',remoteCode, offerStr);
     }
 
     const sendData=(fileslice)=>{
         sendDataToPeer(fileslice);
     }
 
-    return { currentInstance, data, sendData, initialize };
+    return { currentInstance, data, isConnected, receivingProgress, sendData, initialize };
 }
 
 export default useWebsocket;
