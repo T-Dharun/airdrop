@@ -10,7 +10,7 @@ const ResourceShare = () => {
         initialize,
         isConnected,
         receivingProgress
-    } = useWebsocket("ws://10.194.130.1:5000");
+    } = useWebsocket("wss://airdropx.onrender.com/");
 
     const [code, setCode] = useState(['', '', '', '', '', '']);
     const [sendingFiles, setSendingFiles] = useState([]);
