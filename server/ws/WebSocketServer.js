@@ -10,7 +10,7 @@ class WebSocketServer {
   }
 
   generateRandomId() {
-    return Math.random().toString().substr(2, 5);
+    return Math.random().toString().substr(2, 6);
   }
 
   handleConnection(ws) {
@@ -43,6 +43,7 @@ class WebSocketServer {
   }
 
   sendMessage(data) {
+    console.log(data);
     const remotePeer = this.clients[data.to];
     if (!remotePeer) {
       const source = this.clients[data.from];
