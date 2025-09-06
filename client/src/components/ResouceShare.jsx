@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { useRef } from "react";
 import useWebsocket from "../hooks/useWebsocket";
+import docs from "../assets/docs.svg";
+import sheet from "../assets/sheet.svg";
+import slides from "../assets/slides.svg";
+import image from "../assets/image.svg";
+import pdf from "../assets/pdf.svg";
+import music from "../assets/music.svg";
+import video from "../assets/movie.svg";
+import text from "../assets/text.svg";
 
 // Add custom animations
 const customStyles = `
@@ -31,11 +39,17 @@ const customStyles = `
     50% { transform: translateY(20px); }
   }
   
+  @keyframes fade-in {
+    0% { opacity: 0; transform: translateY(-20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  
   .animate-blob { animation: blob 7s infinite; }
   .animate-spin-slow { animation: spin-slow 10s linear infinite; }
   .animate-bounce-slow { animation: bounce-slow 3s ease-in-out infinite; }
   .animate-float { animation: float 4s ease-in-out infinite; }
   .animate-float-reverse { animation: float-reverse 4s ease-in-out infinite; }
+  .animate-fade-in { animation: fade-in 0.3s ease-out; }
   .animation-delay-1000 { animation-delay: 1s; }
   .animation-delay-1500 { animation-delay: 1.5s; }
   .animation-delay-2000 { animation-delay: 2s; }
@@ -50,7 +64,8 @@ const ResourceShare = () => {
         sendData,
         initialize,
         isConnected,
-        receivingProgress
+        receivingProgress,
+        disconnect
     } = useWebsocket("wss://airdropx.onrender.com/");
 
     const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -58,10 +73,19 @@ const ResourceShare = () => {
     const [receivingFiles, setReceivingFiles] = useState({});
     const [selectedFile, setSelectedFile] = useState(null);
     const [dragOver, setDragOver] = useState(false);
+    const [showToast, setShowToast] = useState(false);
     const fileData = useRef();
-
+    console.log(receivingProgress);
     const handleCodeChange = (index, value) => {
         if (value.length > 1) return;
+        
+        // Check if the input is a digit
+        if (value && !/^\d$/.test(value)) {
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000); // Hide toast after 3 seconds
+            return;
+        }
+        
         const newCode = [...code];
         newCode[index] = value;
         setCode(newCode);
@@ -84,31 +108,59 @@ const ResourceShare = () => {
     // Helper function to get file type icon and color
     const getFileIcon = (mimeType, fileName) => {
         const isImage = mimeType?.startsWith('image/');
-        const isVideo = mimeType?.startsWith('video/');
-        const isAudio = mimeType?.startsWith('audio/');
+        const isVideo = mimeType?.startsWith('video/') || fileName?.endsWith('.video');
+        const isAudio = mimeType?.startsWith('audio/') || fileName?.endsWith('.audio');
         const isPDF = mimeType?.includes('pdf');
-        const isDoc = mimeType?.includes('document') || mimeType?.includes('word') || fileName?.endsWith('.doc') || fileName?.endsWith('.docx');
-        const isExcel = mimeType?.includes('spreadsheet') || mimeType?.includes('excel') || fileName?.endsWith('.xls') || fileName?.endsWith('.xlsx');
+        const isDoc = mimeType?.includes('.document') || mimeType?.includes('word') || fileName?.endsWith('.doc') || fileName?.endsWith('.docx');
+        const isExcel = mimeType?.includes('.sheet') || mimeType?.includes('excel') || fileName?.endsWith('.xls') || fileName?.endsWith('.xlsx');
+        const isSlide = mimeType?.includes('.presentation')  || fileName?.endsWith('.pptx') || fileName?.endsWith('.ppt');
         
-        if (isImage) {
+        if (isDoc) {
             return {
                 icon: (
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19M13.5,16L10.5,12.5L8.5,15L6,11.5L9,16H13.5Z"/>
-                    </svg>
+                    <img src={docs} width={40}/>
                 ),
                 bgColor: 'bg-blue-50',
                 iconColor: 'text-blue-500',
                 borderColor: 'border-blue-100'
             };
         }
+        if (isImage) {
+            return {
+                icon: (
+                    <img src={image} width={50}/>
+                ),
+                bgColor: 'bg-violet-50',
+                iconColor: 'text-violet-500',
+                borderColor: 'border-violet-100'
+            };
+        }
+        if (isSlide) {
+            return {
+                icon: (
+                    <img src={slides} width={50}/>
+                ),
+                bgColor: 'bg-yellow-50',
+                iconColor: 'text-violet-500',
+                borderColor: 'border-yellow-100'
+            };
+        }
+
+        if (isExcel) {
+            return {
+                icon: (
+                    <img src={sheet} width={40}/>
+                ),
+                bgColor: 'bg-green-50',
+                iconColor: 'text-blue-500',
+                borderColor: 'border-green-100'
+            };
+        }
         
         if (isVideo) {
             return {
                 icon: (
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z"/>
-                    </svg>
+                     <img src={video} width={40} />
                 ),
                 bgColor: 'bg-red-50',
                 iconColor: 'text-red-500',
@@ -119,9 +171,7 @@ const ResourceShare = () => {
         if (isAudio) {
             return {
                 icon: (
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12,3V13.55C11.41,13.21 10.73,13 10,13A3,3 0 0,0 7,16A3,3 0 0,0 10,19A3,3 0 0,0 13,16V7H17V5H12Z"/>
-                    </svg>
+                     <img src={music} width={40} />
                 ),
                 bgColor: 'bg-purple-50',
                 iconColor: 'text-purple-500',
@@ -132,9 +182,7 @@ const ResourceShare = () => {
         if (isPDF) {
             return {
                 icon: (
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                    </svg>
+                    <img src={pdf} width={40} />
                 ),
                 bgColor: 'bg-orange-50',
                 iconColor: 'text-orange-500',
@@ -145,9 +193,7 @@ const ResourceShare = () => {
         // Default file icon
         return {
             icon: (
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                </svg>
+                <img src={text} width={40}/>
             ),
             bgColor: 'bg-gray-50',
             iconColor: 'text-gray-500',
@@ -207,7 +253,7 @@ const ResourceShare = () => {
             status: 'sending'
         };
         setSendingFiles(prev => [...prev, fileInfo]);
-
+        console.log(fileInfo);
         sendData(
             JSON.stringify({ type: "file-meta", name: file.name, mime: file.type, size: file.size })
         );
@@ -269,7 +315,18 @@ const ResourceShare = () => {
                                 </div>
                                 
                                 <div>
-                                    <h1 className="text-3xl font-bold mb-2">AirdropX</h1>
+                                    <h1 className="text-xl font-bold mb-2 sm:text-3xl">AirdropX
+
+                                        <button 
+                                        onClick={disconnect}
+                                        className="bg-white/20 backdrop-blur-sm p-2 ml-5 rounded-lg hover:bg-white/30 transition-colors group"
+                                        title="Disconnect"
+                                    >
+                                        <svg className="w-5 h-5 text-white group-hover:text-orange-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                        </svg>
+                                    </button>
+                                    </h1>
                                     <p className="text-orange-200 flex items-center space-x-2 xs:text-xs hidden md:block">
                                         <span>Connected Successfully</span>
                                     </p>
@@ -278,6 +335,7 @@ const ResourceShare = () => {
                             
                             <div className="text-right">
                                 <p className="text-orange-100 text-sm mb-1">Client ID</p>
+                                
                                 <div className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg">
                                     <span className="font-mono text-sm font-semibold">{currentInstance.clientId}</span>
                                 </div>
@@ -427,16 +485,6 @@ const ResourceShare = () => {
                                                     
                                                     {/* Action Buttons */}
                                                     <div className="flex space-x-2 ">
-                                                        {/* <button 
-                                                            onClick={() => window.open(url, '_blank')}
-                                                            className="flex-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-2  rounded-lg transition-colors flex items-center justify-center"
-                                                        >
-                                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                                            </svg>
-                                                            
-                                                        </button> */}
                                                         <a 
                                                             href={url} 
                                                             download={item.name}
@@ -463,14 +511,24 @@ const ResourceShare = () => {
 
     return (
         <>
-            {/* Inject custom styles */}
+            
             <style>{customStyles}</style>
+            
+            {/* Toast Notification */}
+            {showToast && (
+                <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2 animate-fade-in">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zM4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8-8-3.589-8-8zm9-3h-2v6h2v-6zm0 8h-2v2h2v-2z"/>
+                    </svg>
+                    <span>Only digits (0-9) are allowed!</span>
+                </div>
+            )}
             
             <div className="min-h-screen bg-gradient-to-br from-orange-100 via-white to-orange-200 flex items-center justify-center relative overflow-hidden">
             
-            {/* Animated Background Elements */}
+            
             <div className="absolute inset-0">
-                {/* Floating Orbs */}
+                
                 <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
                 <div className="absolute top-1/3 right-1/4 w-32 h-32 bg-yellow-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
                 <div className="absolute bottom-1/4 left-1/3 w-32 h-32 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
@@ -496,11 +554,11 @@ const ResourceShare = () => {
         
             {/* Central Connection Card */}
             <div className="relative z-10 backdrop-blur-sm p-12 rounded-3xl border border-orange-200 max-w-md w-full mx-4">
-                {/* Glowing accent */}
+                
                 <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-orange-500/10 rounded-3xl blur-xl"></div>
                 
                 <div className="relative z-10">
-                    {/* Header */}
+                    
                     <div className="text-center mb-8">
                         <div className="w-16 h-16 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full mx-auto mb-4 flex items-center justify-center">
                             <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -526,7 +584,7 @@ const ResourceShare = () => {
                                     id={`code-${index}`}
                                     type="text"
                                     value={digit}
-                                    onChange={(e) => handleCodeChange(index, e.target.value.toUpperCase())}
+                                    onChange={(e) => handleCodeChange(index, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
                                     className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-200 bg-white/50 backdrop-blur-sm"
                                     maxLength="1"
@@ -555,7 +613,7 @@ const ResourceShare = () => {
                     <div className="mt-6 text-center">
                         <div className="flex items-center justify-center space-x-2 text-sm text-gray-900">
                             <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                            <span>Searching for connections...</span>
+                            <span>{currentInstance.message || "Searching for connections ..."}</span>
                         </div>
                     </div>
                 </div>

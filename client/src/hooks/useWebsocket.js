@@ -9,7 +9,8 @@ const useWebsocket = (url) => {
         createOffer,
         createAnswer,
         finalizeConnection,
-        sendDataToPeer
+        sendDataToPeer,
+        disconnectWebRTC
     } = useWebRTC();
 
     const [currentInstance, setCurrentInstance] = useState({});
@@ -18,13 +19,13 @@ const useWebsocket = (url) => {
     useEffect(() => {
         const ws = new WebSocket(url);
         socketRef.current = ws;
-        ws.onopen = () => console.log("opened");
+        ws.onopen = () => console.log("websocket opened");
         ws.onmessage = (res) => {
             const data = JSON.parse(res?.data);
             handleMessage(data);
         }
         ws.onclose = () => {
-            console.log("Connection closed with ID : "+currentInstance.clientId);
+            console.log("websocket Connection closed with ID : "+currentInstance?.clientId);
             setCurrentInstance({});
         };
     }, []);
@@ -48,23 +49,24 @@ const useWebsocket = (url) => {
                 (async () => {
                     const answerStr = await createAnswer(data.payload);
                     sendMessage("answer", data.from, answerStr); 
-                    console.log("Offer Received and Reponse the Answer");
+                    setCurrentInstance(prev=>({...prev,message:'Accepted the offer !!'}));
                 })();
                 break;
             case 'answer':
                 (async () => {
                     finalizeConnection(data.payload);
+                    setCurrentInstance(prev=>({...prev,message:'Connection Established'}));
                 })();
                 break;
             case 'error':
-                console.log(data.error);
+                setCurrentInstance(prev=>({...prev,message:data.error}));
                 break;
         }
     }
 
     const initialize = async (remoteCode) => {
         const offerStr= await createOffer();
-        console.log("Offer created and Requested to the Peer.");
+        setCurrentInstance(prev=>({...prev,message:'Requested send to Peer'}));
         sendMessage('offer',remoteCode, offerStr);
     }
 
@@ -72,7 +74,13 @@ const useWebsocket = (url) => {
         sendDataToPeer(fileslice);
     }
 
-    return { currentInstance, data, isConnected, receivingProgress, sendData, initialize };
+    const disconnect = () => {
+        // Close WebRTC connection but keep WebSocket alive
+        disconnectWebRTC();
+        setCurrentInstance(prev => ({ ...prev, message: 'Disconnected' }));
+    }
+
+    return { currentInstance, data, isConnected, receivingProgress, sendData, initialize, disconnect };
 }
 
 export default useWebsocket;
